@@ -59,6 +59,10 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOF
+#define DEBUG_OUTPUT_TX_Pin GPIO_PIN_2
+#define DEBUG_OUTPUT_TX_GPIO_Port GPIOA
+#define DEBUG_OUTPUT_RX__Pin GPIO_PIN_3
+#define DEBUG_OUTPUT_RX__GPIO_Port GPIOA
 #define LED_GREEN_Pin GPIO_PIN_5
 #define LED_GREEN_GPIO_Port GPIOA
 
