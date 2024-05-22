@@ -61,8 +61,6 @@ void Error_Handler(void);
 #define MCO_GPIO_Port GPIOF
 #define DEBUG_PIN_0_Pin GPIO_PIN_0
 #define DEBUG_PIN_0_GPIO_Port GPIOA
-#define ADC_MEASURE_1_Pin GPIO_PIN_1
-#define ADC_MEASURE_1_GPIO_Port GPIOA
 #define DEBUG_OUTPUT_TX_Pin GPIO_PIN_2
 #define DEBUG_OUTPUT_TX_GPIO_Port GPIOA
 #define DEBUG_OUTPUT_RX__Pin GPIO_PIN_3
