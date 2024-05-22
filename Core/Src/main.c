@@ -42,7 +42,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart2;
-DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -51,10 +50,8 @@ DMA_HandleTypeDef hdma_usart2_tx;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void DMATransferComplete(DMA_HandleTypeDef *hdma);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -69,7 +66,6 @@ void DMATransferComplete(DMA_HandleTypeDef *hdma);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  char msg[] = "The quick brown fox jumps over the lazy dog.\r\n";
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -90,37 +86,16 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_DMA_RegisterCallback(&hdma_usart2_tx, HAL_DMA_XFER_CPLT_CB_ID, &DMATransferComplete);
 
-  char newline[4] = "\r\n";
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // --- DMA ---
-    // Tells usart peripheral to expect data from DMA
-    huart2.Instance->CR3 |= USART_CR3_DMAT;
-    // Start the DMA peripheral in interrupt mode with `msg` as the source and
-    // the "Transmit Data" register of the usart2. This function will get the DMA
-    // to start transferring data from source to destination with a max length of `strlen(msg)`.
-    // Once complete it will call a callback/interrupt function (by default that would be
-    // 'DMA1_Channel1_IRQHandler' unless other wise specified).
-    HAL_DMA_Start_IT(&hdma_usart2_tx, (uint32_t)msg, (uint32_t)&huart2.Instance->TDR, strlen(msg));
-
-
-    HAL_UART_Transmit(&huart2, (uint8_t*)newline, strlen(newline), HAL_MAX_DELAY);
-    HAL_UART_Transmit(&huart2, (uint8_t*)newline, strlen(newline), HAL_MAX_DELAY);
-
-
-
-
-
-    /* USER CODE END WHILE */
+   /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
     HAL_Delay(500);
@@ -217,22 +192,6 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -270,14 +229,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void DMATransferComplete(DMA_HandleTypeDef *hdma) {
-
-  // Disable UART DMA modes (allows uart2 to be accessed without DMA)
-  huart2.Instance->CR3 &= ~USART_CR3_DMAT;
-
-  // --- Blinky ----
-  HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-}
 
 /* USER CODE END 4 */
 
