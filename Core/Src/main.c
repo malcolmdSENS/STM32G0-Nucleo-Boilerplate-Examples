@@ -104,13 +104,19 @@ int main(void)
     // --- Blinky ----
     HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
 
+    // --- ADC ---
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+    uint16_t val = (uint16_t)HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_Stop(&hadc1);
+
     // --- UART ---
-    snprintf(msg, sizeof(msg), "Hello World!\r\n");
+    snprintf(msg, sizeof(msg), "%04d\r\n", (int)val);
     HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    HAL_Delay(500);
+    HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
