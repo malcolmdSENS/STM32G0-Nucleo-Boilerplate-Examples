@@ -32,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_BUF_LEN 4096
+#define ADC_BUF_LEN 32
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -57,7 +57,7 @@ static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 volatile int conversionComplete = 0;
-char msg[15];
+char msg[30];
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -109,7 +109,7 @@ int main(void)
     while(conversionComplete == 0)
     { }
     conversionComplete = 0;
-    snprintf(msg, sizeof(msg), "Hello World!\r\n");
+    snprintf(msg, sizeof(msg), ">ADC1: %d\tADC2: %d\r\n", adc_buf[0], adc_buf[1]);
     HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 
 
