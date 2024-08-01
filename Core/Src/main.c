@@ -21,7 +21,13 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define TIMEOUT_PERIOD		((uint32_t)(2048))
+// User Config Settings
+#define STOPTIME_S          (5)
+#define RUNTIME_ACTIVE_S    (5)
+
+
+#define STOPTIME_PERIOD		((uint32_t)(2048*STOPTIME_S))
+#define RUNTIME_PERIOD		((uint32_t)(1000*RUNTIME_ACTIVE_S))
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,6 +49,9 @@
 LPTIM_HandleTypeDef hlptim1;
 
 /* USER CODE BEGIN PV */
+uint32_t prevTicks = 0;
+uint32_t currentTicks = 0;
+uint32_t callback = 0;
 
 /* USER CODE END PV */
 
@@ -89,15 +98,25 @@ int main(void)
   MX_GPIO_Init();
   MX_LPTIM1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_LPTIM_Counter_Start_IT(&hlptim1, TIMEOUT_PERIOD);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	currentTicks = HAL_GetTick();
+	if(currentTicks - prevTicks >= RUNTIME_PERIOD) {
+		prevTicks = currentTicks;
+		HAL_SuspendTick();
+		HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
+		HAL_LPTIM_TimeOut_Start_IT(&hlptim1, 0xFFFF, STOPTIME_PERIOD);
+		HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+		HAL_ResumeTick();
+	}
 
-
+	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+	HAL_Delay(50);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -211,8 +230,8 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim) {
-	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+void HAL_LPTIM_CompareMatchCallback(LPTIM_HandleTypeDef *hlptim) {
+
 }
 /* USER CODE END 4 */
 
