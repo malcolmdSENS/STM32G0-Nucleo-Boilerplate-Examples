@@ -101,7 +101,7 @@ int main(void)
       HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
       HAL_Delay(100);
 
-      HAL_PWREx_EnterSHUTDOWNMode();
+      HAL_PWR_EnterSTANDBYMode();
       /* USER CODE BEGIN 3 */
     }
   /* USER CODE END 3 */
