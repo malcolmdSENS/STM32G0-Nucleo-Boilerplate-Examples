@@ -49,7 +49,8 @@
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
-
+void blinkLED(int reps);
+void WkupPin2_Config(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -85,20 +86,24 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  WkupPin2_Config();
   /* USER CODE BEGIN 2 */
+  blinkLED(50);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
-  {
-    HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-    HAL_Delay(100);
-    /* USER CODE END WHILE */
+    {
+      HAL_Delay(1000);
+      /* USER CODE END WHILE */
+      HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+      HAL_Delay(100);
 
-    /* USER CODE BEGIN 3 */
-  }
+      HAL_PWREx_EnterSHUTDOWNMode();
+      /* USER CODE BEGIN 3 */
+    }
   /* USER CODE END 3 */
 }
 
@@ -174,6 +179,38 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+// Configures Wake-Up pin 2 on PC13. When exiting shutdown, the
+// config will be lost due to the power reset, so this is necessary
+// to be done once before entering reset.
+void WkupPin2_Config(void) {
+
+  // Disable the wakeup pin functionality (in order to configure)
+  HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN2_LOW);
+
+  // Clear all wake up Flag
+  __HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF2);
+
+  // Enable pull-up on wakeup pin PC13
+  HAL_PWREx_EnableGPIOPullUp(PWR_GPIO_C, PWR_GPIO_BIT_13);
+
+  // Enable pull-up and pull-down configuration for CPU1
+  HAL_PWREx_EnablePullUpPullDownConfig();
+
+  // Enables the wakeup pin PWR_WAKEUP_PIN2 connected via PC13
+  HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN2_LOW);
+
+  // Clear all wake up Flag
+  __HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF2);
+}
+
+void blinkLED(int reps) {
+  int i = 0;
+  while(i < reps) {
+    HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+    HAL_Delay(50);
+    ++i;
+  }
+}
 /* USER CODE END 4 */
 
 /**
