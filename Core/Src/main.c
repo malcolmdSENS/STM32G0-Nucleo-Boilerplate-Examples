@@ -46,7 +46,8 @@ UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN PV */
 uint8_t sent[] = "ON";
-uint8_t received[3];
+uint8_t rxBuff[3];
+bool dataReady = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -101,10 +102,15 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  // Initial Receive request...
+  HAL_UART_Receive_IT(&huart5, rxBuff, sizeof(rxBuff));
   while (1)
   {
-    HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-    processMessage();
+    if(processMessage()) {
+      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+    } else {
+      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
+    }
     sendMessage();
 
     HAL_Delay(100);
@@ -230,25 +236,25 @@ void sendMessage(void) {
 }
 
 HAL_StatusTypeDef readMessage(void) {
-  return
-      HAL_UART_Receive(&huart5,
-                       received,
-                       sizeof(received),
-                       HAL_MAX_DELAY >> 1);
+  return HAL_UART_Receive_IT(&huart5, rxBuff, sizeof(rxBuff));
 }
 
 bool processMessage(void) {
-  bool success = false;
-   memset(received, 0, sizeof(received));
-   HAL_StatusTypeDef val = readMessage();
-   if(val == HAL_OK) {
-
-     if(strcmp((char*)received, "ON")) {
+   bool success = false;
+   if(dataReady) {
+     dataReady = false;
+     if(strcmp((char*)rxBuff, "ABC") == 0) {
        success = true;
      }
    }
    return success;
 }
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  dataReady = true;
+  HAL_UART_Receive_IT(&huart5, rxBuff, sizeof(rxBuff));
+}
+
 /* USER CODE END 4 */
 
 /**
