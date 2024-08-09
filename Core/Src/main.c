@@ -21,6 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -43,7 +45,8 @@
 UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN PV */
-
+uint8_t sent[] = "ON";
+uint8_t received[3];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -51,6 +54,10 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART5_UART_Init(void);
 /* USER CODE BEGIN PFP */
+void sendMessage(void);
+HAL_StatusTypeDef readMessage(void);
+bool processMessage(void);
+
 
 /* USER CODE END PFP */
 
@@ -97,7 +104,11 @@ int main(void)
   while (1)
   {
     HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+    processMessage();
+    sendMessage();
+
     HAL_Delay(100);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -213,7 +224,31 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void sendMessage(void) {
 
+  HAL_UART_Transmit(&huart5, sent, sizeof(sent), HAL_MAX_DELAY);
+}
+
+HAL_StatusTypeDef readMessage(void) {
+  return
+      HAL_UART_Receive(&huart5,
+                       received,
+                       sizeof(received),
+                       HAL_MAX_DELAY >> 1);
+}
+
+bool processMessage(void) {
+  bool success = false;
+   memset(received, 0, sizeof(received));
+   HAL_StatusTypeDef val = readMessage();
+   if(val == HAL_OK) {
+
+     if(strcmp((char*)received, "ON")) {
+       success = true;
+     }
+   }
+   return success;
+}
 /* USER CODE END 4 */
 
 /**
