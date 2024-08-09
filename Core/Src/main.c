@@ -103,9 +103,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-    processMessage();
-    sendMessage();
+
+    if(processMessage())
+      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+    else
+      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
 
     HAL_Delay(100);
 
@@ -231,11 +233,7 @@ void sendMessage(void) {
 }
 
 HAL_StatusTypeDef readMessage(void) {
-  return
-      HAL_UART_Receive(&huart5,
-                       received,
-                       sizeof(received),
-                       HAL_MAX_DELAY >> 1);
+return HAL_UART_Receive(&huart5, received, sizeof(received), HAL_MAX_DELAY);
 }
 
 bool processMessage(void) {
@@ -244,7 +242,7 @@ bool processMessage(void) {
    HAL_StatusTypeDef val = readMessage();
    if(val == HAL_OK) {
 
-     if(strcmp((char*)received, "ON")) {
+     if(strcmp((char*)received, "ABC") == 0) {
        success = true;
      }
    }
