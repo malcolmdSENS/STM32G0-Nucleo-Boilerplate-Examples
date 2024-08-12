@@ -50,9 +50,6 @@ uint8_t sent[] = "ON";
 uint8_t rxBuff[2];
 bool dataReady = false;
 
-uint32_t pulseInt = 80;
-uint32_t curTick = 0;
-uint32_t prevTick = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,7 +61,6 @@ static void MX_USART5_UART_Init(void);
 void sendMessage(void);
 HAL_StatusTypeDef readMessage(void);
 bool processMessage(void);
-void timeoutLED(void);
 
 
 /* USER CODE END PFP */
@@ -114,12 +110,11 @@ int main(void)
   HAL_UART_Receive_DMA(&huart5, rxBuff, sizeof(rxBuff));
   while (1)
   {
-    curTick = HAL_GetTick();
     if(processMessage()) {
-      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+      HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
       sendMessage();
     }
-    timeoutLED();
+
 
 
     /* USER CODE END WHILE */
@@ -254,14 +249,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void timeoutLED(void) {
-
-  if(curTick - prevTick >= pulseInt) {
-    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
-    prevTick = curTick;
-  }
-}
-
 void sendMessage(void) {
 
   HAL_UART_Transmit_DMA(&huart5, sent, sizeof(sent));
