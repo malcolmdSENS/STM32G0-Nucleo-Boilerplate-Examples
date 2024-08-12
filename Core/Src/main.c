@@ -46,7 +46,7 @@ UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN PV */
 uint8_t sent[] = "ON";
-uint8_t rxBuff[3];
+uint8_t rxBuff[2];
 bool dataReady = false;
 /* USER CODE END PV */
 
@@ -107,11 +107,9 @@ int main(void)
   while (1)
   {
     if(processMessage()) {
-      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
-    } else {
-      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+      sendMessage();
     }
-    sendMessage();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -241,7 +239,7 @@ bool processMessage(void) {
    bool success = false;
    if(dataReady) {
      dataReady = false;
-     if(strcmp((char*)rxBuff, "ABC") == 0) {
+     if(strcmp((char*)rxBuff, "ON") == 0) {
        success = true;
      }
    }
