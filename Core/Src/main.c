@@ -33,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BUF_SIZE 3
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,8 +45,7 @@
 UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN PV */
-uint8_t sent[] = "ON";
-uint8_t received[3];
+uint8_t msgBuffer[BUF_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -54,7 +53,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART5_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void sendMessage(void);
+void sendMessage(uint8_t* msg, size_t size);
 HAL_StatusTypeDef readMessage(void);
 bool processMessage(void);
 
@@ -227,22 +226,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void sendMessage(void) {
+void sendMessage(uint8_t* msg, size_t size) {
 
-  HAL_UART_Transmit(&huart5, sent, sizeof(sent), HAL_MAX_DELAY);
+  HAL_UART_Transmit(&huart5, msg, size, HAL_MAX_DELAY);
 }
 
 HAL_StatusTypeDef readMessage(void) {
-return HAL_UART_Receive(&huart5, received, sizeof(received), HAL_MAX_DELAY);
+return HAL_UART_Receive(&huart5, msgBuffer, sizeof(msgBuffer), HAL_MAX_DELAY);
 }
 
 bool processMessage(void) {
   bool success = false;
-   memset(received, 0, sizeof(received));
+   memset(msgBuffer, 0, BUF_SIZE);
    HAL_StatusTypeDef val = readMessage();
    if(val == HAL_OK) {
 
-     if(strcmp((char*)received, "ABC") == 0) {
+     if(strcmp((char*)msgBuffer, "ABC") == 0) {
+       sendMessage(msgBuffer, BUF_SIZE);
        success = true;
      }
    }
