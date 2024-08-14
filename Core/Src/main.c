@@ -33,7 +33,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ENTER_CRITIAL_SECTION(x)
+#define EXIT_CRITIAL_SECTION(x)
 
+#define BUF_SIZE 2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,9 +50,10 @@ DMA_HandleTypeDef hdma_usart5_rx;
 DMA_HandleTypeDef hdma_usart5_tx;
 
 /* USER CODE BEGIN PV */
-uint8_t sent[] = "ON";
-uint8_t rxBuff[2];
+uint8_t rcvBuffer[BUF_SIZE];
+uint8_t sndBuffer[BUF_SIZE];
 bool dataReady = false;
+bool txReady = true;
 
 /* USER CODE END PV */
 
@@ -59,7 +63,7 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART5_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void sendMessage(void);
+bool sendMessage(void);
 HAL_StatusTypeDef readMessage(void);
 bool processMessage(void);
 
@@ -108,12 +112,14 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   // Initial Receive request...
-  HAL_UART_Receive_DMA(&huart5, rxBuff, sizeof(rxBuff));
+  HAL_UART_Receive_DMA(&huart5, rcvBuffer, BUF_SIZE);
   while (1)
   {
     if(processMessage()) {
       HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-      sendMessage();
+      if(txReady) {
+        txReady = sendMessage();
+      }
     }
 
 
@@ -253,27 +259,33 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void sendMessage(void) {
+bool sendMessage(void) {
 
-  HAL_UART_Transmit_DMA(&huart5, sent, sizeof(sent));
+  return HAL_UART_Transmit_DMA(&huart5, sndBuffer, BUF_SIZE) != HAL_OK;
 }
 
 bool processMessage(void) {
    bool success = false;
    if(dataReady) {
      dataReady = false;
-     if(strcmp((char*)rxBuff, "ON") == 0) {
+     ENTER_CRITIAL_SECTION();
+     if(strcmp((char*)rcvBuffer, "ON") == 0) {
+       memmove(sndBuffer, rcvBuffer, BUF_SIZE);
        success = true;
      }
+     EXIT_CRITIAL_SECTION();
    }
    return success;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   dataReady = true;
-  HAL_UART_Receive_DMA(&huart5, rxBuff, sizeof(rxBuff));
+  HAL_UART_Receive_DMA(&huart5, rcvBuffer, BUF_SIZE);
 }
 
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+  txReady = true;
+}
 /* USER CODE END 4 */
 
 /**
