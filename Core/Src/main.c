@@ -28,10 +28,13 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
+#define ENTER_CRITIAL_SECTION(x)
+#define EXIT_CRITIAL_SECTION(x)
+
+#define BUF_SIZE 2
 /* USER CODE BEGIN PD */
 
 /* USER CODE END PD */
@@ -45,8 +48,8 @@
 UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN PV */
-uint8_t sent[] = "ON";
-uint8_t rxBuff[2];
+uint8_t rxBuffer[BUF_SIZE];
+uint8_t msgBuffer[BUF_SIZE];
 bool dataReady = false;
 
 uint32_t pulseInt = 80;
@@ -108,7 +111,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   // Initial Receive request...
-  HAL_UART_Receive_IT(&huart5, rxBuff, sizeof(rxBuff));
+  HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
   while (1)
   {
     curTick = HAL_GetTick();
@@ -245,23 +248,26 @@ void timeoutLED(void) {
 
 void sendMessage(void) {
 
-  HAL_UART_Transmit(&huart5, sent, sizeof(sent), HAL_MAX_DELAY);
+  HAL_UART_Transmit(&huart5, msgBuffer, BUF_SIZE, HAL_MAX_DELAY);
 }
 
 bool processMessage(void) {
    bool success = false;
    if(dataReady) {
      dataReady = false;
-     if(strcmp((char*)rxBuff, "ON") == 0) {
+     ENTER_CRITIAL_SECTION();
+     if(strcmp((char*)rxBuffer, "ON") == 0) {
+       memmove(msgBuffer, rxBuffer, BUF_SIZE);
        success = true;
      }
+     EXIT_CRITIAL_SECTION();
    }
    return success;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   dataReady = true;
-  HAL_UART_Receive_IT(&huart5, rxBuff, sizeof(rxBuff));
+  HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
 }
 
 /* USER CODE END 4 */
