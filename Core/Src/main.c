@@ -34,7 +34,7 @@
 #define ENTER_CRITIAL_SECTION(x)
 #define EXIT_CRITIAL_SECTION(x)
 
-#define BUF_SIZE 2
+#define BUF_SIZE 13
 /* USER CODE BEGIN PD */
 
 /* USER CODE END PD */
@@ -52,9 +52,6 @@ uint8_t rxBuffer[BUF_SIZE];
 uint8_t msgBuffer[BUF_SIZE];
 bool dataReady = false;
 
-uint32_t pulseInt = 80;
-uint32_t curTick = 0;
-uint32_t prevTick = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,7 +62,6 @@ static void MX_USART5_UART_Init(void);
 void sendMessage(void);
 HAL_StatusTypeDef readMessage(void);
 bool processMessage(void);
-void timeoutLED(void);
 
 
 /* USER CODE END PFP */
@@ -114,14 +110,11 @@ int main(void)
   HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
   while (1)
   {
-    curTick = HAL_GetTick();
     if(processMessage()) {
-      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+      HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
       sendMessage();
     }
-    timeoutLED();
-
-
+    HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -238,13 +231,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void timeoutLED(void) {
-
-  if(curTick - prevTick >= pulseInt) {
-    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
-    prevTick = curTick;
-  }
-}
 
 void sendMessage(void) {
 
@@ -256,7 +242,7 @@ bool processMessage(void) {
    if(dataReady) {
      dataReady = false;
      ENTER_CRITIAL_SECTION();
-     if(strcmp((char*)rxBuffer, "ON") == 0) {
+     if(strcmp((char*)rxBuffer, "ABCDEFGHIJKLM") == 0) {
        memmove(msgBuffer, rxBuffer, BUF_SIZE);
        success = true;
      }
