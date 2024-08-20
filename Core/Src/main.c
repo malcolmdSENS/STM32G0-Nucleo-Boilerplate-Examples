@@ -36,7 +36,7 @@
 #define ENTER_CRITIAL_SECTION(x)
 #define EXIT_CRITIAL_SECTION(x)
 
-#define MSG_SIZE 2
+#define MSG_SIZE 13
 #define FIFO_SIZE 50
 /* USER CODE END PD */
 
@@ -57,7 +57,7 @@ bool txReady = false;
 bool rxIntErrFlag = false;
 
 typedef struct {
-  uint8_t msg[2];
+  uint8_t msg[MSG_SIZE];
 }BS_IssMsg;
 
 BS_IssMsg processBuffer[FIFO_SIZE];
@@ -148,7 +148,7 @@ int main(void)
   {
     if(processSerialCommunications()) {
       HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-     // sendMessage();
+      sendMessage();
     }
     checkRxIntErrFlag();
 
@@ -290,7 +290,7 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void sendMessage(void) {
-  HAL_UART_Transmit(&huart5, sndBuffer, MSG_SIZE, HAL_MAX_DELAY);
+  HAL_UART_Transmit_DMA(&huart5, sndBuffer, MSG_SIZE);
 }
 
 void readMessage(void) {
@@ -308,7 +308,7 @@ bool processSerialCommunications (void) {
     }
 
     BS_IssMsg* curMsg = &processBuffer[rxIndex];
-    bool validMsg = (strncmp((char*)curMsg, onMsg, MSG_SIZE) == 0);
+    bool validMsg = (strncmp((char*)curMsg, "ABCDEFGHIJKLM", MSG_SIZE) == 0);
     if(validMsg) {
       memmove(sndBuffer, &processBuffer[rxIndex], MSG_SIZE);
       memset(rcvBuffer, 0, MSG_SIZE);
@@ -330,6 +330,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     }
     memmove(&processBuffer[wrIndex], rcvBuffer, MSG_SIZE);
     rxIntErrFlag = UART_EnableRxInterrupt();
+  } else {
+    bufferFull = true;
   }
 }
 
