@@ -242,7 +242,7 @@ bool processMessage(void) {
    if(dataReady) {
      dataReady = false;
      ENTER_CRITIAL_SECTION();
-     if(strcmp((char*)rxBuffer, "ABCDEFGHIJKLM") == 0) {
+     if(strncmp((char*)rxBuffer, "ABCDEFGHIJKLM", BUF_SIZE) == 0) {
        memmove(msgBuffer, rxBuffer, BUF_SIZE);
        success = true;
      }
