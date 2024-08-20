@@ -35,6 +35,7 @@
 #define EXIT_CRITIAL_SECTION(x)
 
 #define BUF_SIZE 13
+#define FIFO_SIZE 20
 /* USER CODE BEGIN PD */
 
 /* USER CODE END PD */
@@ -50,8 +51,33 @@ UART_HandleTypeDef huart5;
 /* USER CODE BEGIN PV */
 uint8_t rxBuffer[BUF_SIZE];
 uint8_t msgBuffer[BUF_SIZE];
-bool dataReady = false;
 
+typedef struct {
+  uint8_t msg[BUF_SIZE];
+}BS_IssMsg;
+
+//char onMsg[] = "ABCDEFGHIJKLM";
+BS_IssMsg processBuffer[FIFO_SIZE];
+uint8_t rxIndex = FIFO_SIZE;
+uint8_t wrIndex = FIFO_SIZE;
+
+
+// FIFO Stuff....
+bool BufferNotEmpty() {
+  bool notEmpty = wrIndex != rxIndex;
+  return notEmpty;
+}
+
+bool BufferNotFull() {
+  size_t nextIdx = wrIndex + 1;
+  if (nextIdx >= FIFO_SIZE) {
+    nextIdx = 0;
+  }
+  return (nextIdx != rxIndex);
+}
+
+bool bufferFull = false;
+bool bufferEmpty = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,7 +86,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART5_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void sendMessage(void);
-HAL_StatusTypeDef readMessage(void);
+void readMessage(void);
 bool processMessage(void);
 
 
@@ -234,26 +260,46 @@ static void MX_GPIO_Init(void)
 
 void sendMessage(void) {
 
-  HAL_UART_Transmit(&huart5, msgBuffer, BUF_SIZE, HAL_MAX_DELAY);
+  HAL_UART_Transmit_IT(&huart5, msgBuffer, BUF_SIZE);
+}
+
+void readMessage(void) {
+  HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
 }
 
 bool processMessage(void) {
    bool success = false;
-   if(dataReady) {
-     dataReady = false;
+   if(BufferNotEmpty()) {
+     bufferEmpty = false;
+     // Get message from buffer and advance readIdx.
+     if (++rxIndex >= FIFO_SIZE) {
+       rxIndex = 0;
+     }
      ENTER_CRITIAL_SECTION();
-     if(strncmp((char*)rxBuffer, "ABCDEFGHIJKLM", BUF_SIZE) == 0) {
-       memmove(msgBuffer, rxBuffer, BUF_SIZE);
+     BS_IssMsg* curMsg = &processBuffer[rxIndex];
+     if(strncmp((char*)curMsg, "ABCDEFGHIJKLM", BUF_SIZE) == 0) {
+       memmove(msgBuffer, curMsg, BUF_SIZE);
        success = true;
      }
      EXIT_CRITIAL_SECTION();
+   } else {
+     bufferEmpty = true;
    }
    return success;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-  dataReady = true;
-  HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
+  if(BufferNotFull()) {
+    bufferFull = false;
+    // Write to the next index after checking above.
+    if (++wrIndex >= FIFO_SIZE) {
+      wrIndex = 0;
+    }
+    memmove(&processBuffer[wrIndex], rxBuffer, BUF_SIZE);
+    HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
+  } else {
+    bufferFull = true;
+  }
 }
 
 /* USER CODE END 4 */
