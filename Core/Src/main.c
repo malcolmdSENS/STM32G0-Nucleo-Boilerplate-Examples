@@ -36,7 +36,8 @@
 #define ENTER_CRITIAL_SECTION(x)
 #define EXIT_CRITIAL_SECTION(x)
 
-#define BUF_SIZE 2
+#define MSG_SIZE 13
+#define FIFO_SIZE 50
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,10 +51,36 @@ DMA_HandleTypeDef hdma_usart5_rx;
 DMA_HandleTypeDef hdma_usart5_tx;
 
 /* USER CODE BEGIN PV */
-uint8_t rcvBuffer[BUF_SIZE];
-uint8_t sndBuffer[BUF_SIZE];
-bool dataReady = false;
-bool txReady = true;
+uint8_t sndBuffer[MSG_SIZE];
+uint8_t rcvBuffer[MSG_SIZE];
+bool txReady = false;
+bool rxIntErrFlag = false;
+
+typedef struct {
+  uint8_t msg[MSG_SIZE];
+}BS_IssMsg;
+
+BS_IssMsg processBuffer[FIFO_SIZE];
+uint8_t rxIndex = FIFO_SIZE;
+uint8_t wrIndex = FIFO_SIZE;
+
+char onMsg[] = {'O', 'N'};
+// FIFO Stuff....
+bool BufferNotEmpty() {
+  bool notEmpty = wrIndex != rxIndex;
+  return notEmpty;
+}
+
+bool BufferNotFull() {
+  size_t nextIdx = wrIndex + 1;
+  if (nextIdx >= FIFO_SIZE) {
+    nextIdx = 0;
+  }
+  return (nextIdx != rxIndex);
+}
+
+bool bufferFull = false;
+bool bufferEmpty = false;
 
 /* USER CODE END PV */
 
@@ -63,9 +90,13 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART5_UART_Init(void);
 /* USER CODE BEGIN PFP */
-bool sendMessage(void);
-HAL_StatusTypeDef readMessage(void);
-bool processMessage(void);
+void sendMessage(void);
+void readMessage(void);
+bool processSerialCommunications(void);
+
+void checkRxIntErrFlag(void);
+int UART_EnableRxInterrupt(void);
+
 
 
 /* USER CODE END PFP */
@@ -112,17 +143,16 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   // Initial Receive request...
-  HAL_UART_Receive_DMA(&huart5, rcvBuffer, BUF_SIZE);
+  rxIntErrFlag = UART_EnableRxInterrupt();
   while (1)
   {
-    if(processMessage()) {
+    if(processSerialCommunications()) {
       HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-      if(txReady) {
-        txReady = sendMessage();
-      }
+      sendMessage();
     }
+    checkRxIntErrFlag();
 
-
+    HAL_Delay(100);
 
     /* USER CODE END WHILE */
 
@@ -259,32 +289,72 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-bool sendMessage(void) {
-
-  return HAL_UART_Transmit_DMA(&huart5, sndBuffer, BUF_SIZE) != HAL_OK;
+void sendMessage(void) {
+  HAL_UART_Transmit_DMA(&huart5, sndBuffer, MSG_SIZE);
 }
 
-bool processMessage(void) {
-   bool success = false;
-   if(dataReady) {
-     dataReady = false;
-     ENTER_CRITIAL_SECTION();
-     if(strcmp((char*)rcvBuffer, "ON") == 0) {
-       memmove(sndBuffer, rcvBuffer, BUF_SIZE);
-       success = true;
-     }
-     EXIT_CRITIAL_SECTION();
-   }
-   return success;
+void readMessage(void) {
+  HAL_UART_Receive_DMA(&huart5, rcvBuffer, MSG_SIZE);
+}
+
+bool processSerialCommunications (void) {
+  bool success = false;
+
+  if(BufferNotEmpty()) {
+    bufferEmpty = false;
+    // Get message from buffer and advance readIdx.
+    if (++rxIndex >= FIFO_SIZE) {
+      rxIndex = 0;
+    }
+
+    BS_IssMsg* curMsg = &processBuffer[rxIndex];
+    bool validMsg = (strncmp((char*)curMsg, "ABCDEFGHIJKLM", MSG_SIZE) == 0);
+    if(validMsg) {
+      memmove(sndBuffer, &processBuffer[rxIndex], MSG_SIZE);
+      memset(rcvBuffer, 0, MSG_SIZE);
+      //sendMessage();
+      success = true;
+    }
+  } else {
+    bufferEmpty = true;
+  }
+  return success;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-  dataReady = true;
-  HAL_UART_Receive_DMA(&huart5, rcvBuffer, BUF_SIZE);
+  if(BufferNotFull()) {
+    bufferFull = false;
+    // Write to the next index after checking above.
+    if (++wrIndex >= FIFO_SIZE) {
+      wrIndex = 0;
+    }
+    memmove(&processBuffer[wrIndex], rcvBuffer, MSG_SIZE);
+    rxIntErrFlag = UART_EnableRxInterrupt();
+  } else {
+    bufferFull = true;
+  }
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
   txReady = true;
+}
+
+int UART_EnableRxInterrupt(void) {
+  if ( HAL_UART_Receive_DMA(&huart5, rcvBuffer, MSG_SIZE) != HAL_OK ) {
+    return 1;
+  }
+
+  return 0;
+}
+
+void checkRxIntErrFlag(void) {
+  if(rxIntErrFlag) {
+    rxIntErrFlag = UART_EnableRxInterrupt();
+  }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+  UART_EnableRxInterrupt();
 }
 /* USER CODE END 4 */
 
