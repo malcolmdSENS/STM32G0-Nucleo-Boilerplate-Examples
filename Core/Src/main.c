@@ -67,7 +67,6 @@ bool BufferNotEmpty() {
   bool notEmpty = wrIndex != rxIndex;
   return notEmpty;
 }
-
 bool BufferNotFull() {
   size_t nextIdx = wrIndex + 1;
   if (nextIdx >= FIFO_SIZE) {
@@ -76,8 +75,6 @@ bool BufferNotFull() {
   return (nextIdx != rxIndex);
 }
 
-bool bufferFull = false;
-bool bufferEmpty = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -133,14 +130,14 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   // Initial Receive request...
-  HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
+  readMessage();
   while (1)
   {
     if(processMessage()) {
       HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
       sendMessage();
     }
-    HAL_Delay(100);
+    HAL_Delay(50);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -270,7 +267,6 @@ void readMessage(void) {
 bool processMessage(void) {
    bool success = false;
    if(BufferNotEmpty()) {
-     bufferEmpty = false;
      // Get message from buffer and advance readIdx.
      if (++rxIndex >= FIFO_SIZE) {
        rxIndex = 0;
@@ -282,23 +278,19 @@ bool processMessage(void) {
        success = true;
      }
      EXIT_CRITIAL_SECTION();
-   } else {
-     bufferEmpty = true;
    }
+
    return success;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   if(BufferNotFull()) {
-    bufferFull = false;
     // Write to the next index after checking above.
     if (++wrIndex >= FIFO_SIZE) {
       wrIndex = 0;
     }
     memmove(&processBuffer[wrIndex], rxBuffer, BUF_SIZE);
-    HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
-  } else {
-    bufferFull = true;
+    readMessage();
   }
 }
 
