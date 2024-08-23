@@ -35,7 +35,7 @@
 #define EXIT_CRITIAL_SECTION(x)
 
 #define BUF_SIZE 13
-#define FIFO_SIZE 20
+#define FIFO_SIZE 100
 /* USER CODE BEGIN PD */
 
 /* USER CODE END PD */
@@ -51,6 +51,7 @@ UART_HandleTypeDef huart5;
 /* USER CODE BEGIN PV */
 uint8_t rxBuffer[BUF_SIZE];
 uint8_t msgBuffer[BUF_SIZE];
+uint8_t bufIndex = 0;
 
 typedef struct {
   uint8_t msg[BUF_SIZE];
@@ -60,6 +61,7 @@ typedef struct {
 BS_IssMsg processBuffer[FIFO_SIZE];
 uint8_t rxIndex = FIFO_SIZE;
 uint8_t wrIndex = FIFO_SIZE;
+bool readReady = false;
 
 
 // FIFO Stuff....
@@ -137,7 +139,7 @@ int main(void)
       HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
       sendMessage();
     }
-    HAL_Delay(50);
+    HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -261,12 +263,12 @@ void sendMessage(void) {
 }
 
 void readMessage(void) {
-  HAL_UART_Receive_IT(&huart5, rxBuffer, BUF_SIZE);
+  HAL_UART_Receive_IT(&huart5, rxBuffer, 1);
 }
 
 bool processMessage(void) {
    bool success = false;
-   if(BufferNotEmpty()) {
+   if(readReady && BufferNotEmpty()) {
      // Get message from buffer and advance readIdx.
      if (++rxIndex >= FIFO_SIZE) {
        rxIndex = 0;
@@ -284,13 +286,21 @@ bool processMessage(void) {
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-  if(BufferNotFull()) {
-    // Write to the next index after checking above.
-    if (++wrIndex >= FIFO_SIZE) {
-      wrIndex = 0;
+  if(bufIndex < (BUF_SIZE-1)) {
+    ++bufIndex;
+    readReady = false;
+    HAL_UART_Receive_IT(&huart5, &rxBuffer[bufIndex], 1);
+  } else {
+    bufIndex = 0;
+    readReady = true;
+    if(BufferNotFull()) {
+      // Write to the next index after checking above.
+      if (++wrIndex >= FIFO_SIZE) {
+        wrIndex = 0;
+      }
+      memmove(&processBuffer[wrIndex], rxBuffer, BUF_SIZE);
+      readMessage();
     }
-    memmove(&processBuffer[wrIndex], rxBuffer, BUF_SIZE);
-    readMessage();
   }
 }
 
