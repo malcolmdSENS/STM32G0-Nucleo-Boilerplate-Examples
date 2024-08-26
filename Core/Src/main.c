@@ -77,6 +77,9 @@ bool BufferNotFull() {
   return (nextIdx != rxIndex);
 }
 
+
+bool bufferFull = false;
+bool bufferEmpty = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -268,19 +271,23 @@ void readMessage(void) {
 
 bool processMessage(void) {
    bool success = false;
-   if(readReady && BufferNotEmpty()) {
-     // Get message from buffer and advance readIdx.
-     if (++rxIndex >= FIFO_SIZE) {
-       rxIndex = 0;
+   if(readReady) {
+     bufferEmpty = false;
+     while(BufferNotEmpty()) {
+       // Get message from buffer and advance readIdx.
+       if (++rxIndex >= FIFO_SIZE) {
+         rxIndex = 0;
+       }
+       ENTER_CRITIAL_SECTION();
+       BS_IssMsg* curMsg = &processBuffer[rxIndex];
+       if(strncmp((char*)curMsg, "ABCDEFGHIJKLM", BUF_SIZE) == 0) {
+         memmove(msgBuffer, curMsg, BUF_SIZE);
+         success = true;
+       }
+       EXIT_CRITIAL_SECTION();
      }
-     ENTER_CRITIAL_SECTION();
-     BS_IssMsg* curMsg = &processBuffer[rxIndex];
-     if(strncmp((char*)curMsg, "ABCDEFGHIJKLM", BUF_SIZE) == 0) {
-       memmove(msgBuffer, curMsg, BUF_SIZE);
-       success = true;
-     }
-     EXIT_CRITIAL_SECTION();
-   }
+     bufferEmpty = false;
+  }
 
    return success;
 }
@@ -294,12 +301,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     bufIndex = 0;
     readReady = true;
     if(BufferNotFull()) {
+      bufferFull = false;
       // Write to the next index after checking above.
       if (++wrIndex >= FIFO_SIZE) {
         wrIndex = 0;
       }
       memmove(&processBuffer[wrIndex], rxBuffer, BUF_SIZE);
       readMessage();
+    } else {
+      bufferFull = true;
     }
   }
 }
