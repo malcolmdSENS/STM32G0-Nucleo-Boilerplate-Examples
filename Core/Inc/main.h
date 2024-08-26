@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#define ENTER_CRITIAL_SECTION(x)
+#define EXIT_CRITIAL_SECTION(x)
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
