@@ -44,6 +44,17 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart5;
+bool isHead = false;
+
+uint8_t headMsg[] = "I'm the head!\n";
+uint8_t nonHeadMsg[] = "I'm not the head!\n";
+
+uint32_t curTick = 0;
+
+uint32_t transmitInt = 500;
+uint32_t transmitPrev = 0;
+
+uint32_t pulsePrev = 0;
 
 /* USER CODE BEGIN PV */
 
@@ -53,10 +64,13 @@ UART_HandleTypeDef huart5;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART5_UART_Init(void);
+void Reconfigure_Tx(void);
 /* USER CODE BEGIN PFP */
 void sendMessage(void);
 void readMessage(void);
 bool processMessage(void);
+bool identifyHeadDevice();
+bool timeoutInterval(uint32_t prev, uint32_t inter);
 
 
 /* USER CODE END PFP */
@@ -102,16 +116,23 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   // Initial Receive request...
+  isHead = identifyHeadDevice();
   readMessage();
-  while (1)
-  {
-    if(processMessage()) {
-      HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-      sendMessage();
-    }
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+  while (1) {
+    uint8_t pulseInterval = isHead ? 50 : 100;
+    uint8_t* msg = isHead ? headMsg : nonHeadMsg;
+    uint8_t size = (isHead ? sizeof(headMsg) : sizeof(nonHeadMsg)) - 1;
+    curTick = HAL_GetTick();
+
+    if(timeoutInterval(pulsePrev, pulseInterval)) {
+      HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+      pulsePrev = curTick;
+    }
+    if(timeoutInterval(transmitPrev, transmitInt)) {
+      HAL_UART_Transmit_IT(&huart5, msg, size);
+      transmitPrev = curTick;
+    }
   }
   /* USER CODE END 3 */
 }
@@ -225,7 +246,57 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void reconfigureUartTxRxGPIO(void) {
+  if(HAL_UART_DeInit(&huart5) == HAL_OK) {
 
+    // Initialize the GPIO Pin...
+      /*Configure GPIO pin Output Level */
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);
+
+      GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+      /*Configure GPIO pin : GPIOC_PIN_12 (Tx) */
+      GPIO_InitStruct.Pin = GPIO_PIN_12;
+      GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+      GPIO_InitStruct.Pull = GPIO_NOPULL;
+      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+      HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+      /*Configure GPIO pin : GPIOB_PIN_1 (Rx) */
+      GPIO_InitStruct.Pin = GPIO_PIN_1;
+      GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+      GPIO_InitStruct.Pull = GPIO_PULLUP;
+      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+      HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  }
+
+}
+
+bool identifyHeadDevice(void) {
+
+  // 1. Change Tx, Rx so we can control directly...
+  reconfigureUartTxRxGPIO();
+
+  // 2. Hold down Tx to let the next node know that there is a link...
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, 0);
+  HAL_Delay(5000);
+
+  // 3. Read the Rx to detect that there is a link (Held low)...
+  bool detectsLink = false;
+  detectsLink = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_1) == GPIO_PIN_RESET;
+  HAL_Delay(5000);
+
+  // Give GPIO pins back to UART again for communication
+  MX_USART5_UART_Init();
+
+  // 4. If a link does not exist you are the head...
+  return !detectsLink;
+}
+
+
+bool timeoutInterval(uint32_t prev, uint32_t inter) {
+  return (curTick - prev >= inter);
+}
 /* USER CODE END 4 */
 
 /**
